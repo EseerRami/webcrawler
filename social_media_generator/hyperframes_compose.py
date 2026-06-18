@@ -52,6 +52,10 @@ clip already contains the voiceover audio.
 - OVERLAYS (on top of the video): an intro title card, animated lower-third with \
 the title, 2-4 short section captions that reinforce the narration, and an outro \
 call-to-action card.
+- PRODUCT IMAGES: if product image filenames are provided, feature each one as a \
+clean product card/cutaway timed to the relevant part of the narration (e.g. slide \
+in beside the presenter with a short label). Reference them by their relative \
+filenames. Do not stretch them — preserve aspect ratio.
 - MOTION: create every GSAP timeline with `{ paused: true }` and push it onto \
 `window.__timelines` (define `window.__timelines = window.__timelines || []` first). \
 Give animated elements `data-start` and `data-duration` (in seconds) so timing is \
@@ -82,13 +86,21 @@ class HyperFramesComposer:
         self,
         script: VideoScript,
         duration_seconds: int,
+        product_filenames: list[str] | None = None,
         feedback: str | None = None,
     ) -> str:
         width, height = self._config.compose_resolution.split("x")
+        products = product_filenames or []
+        products_line = (
+            "PRODUCT IMAGE FILES: " + ", ".join(products)
+            if products
+            else "PRODUCT IMAGE FILES: (none)"
+        )
         prompt = (
             f"TARGET RESOLUTION: {width}x{height}\n"
             f"TARGET DURATION: about {duration_seconds} seconds\n"
-            f"AVATAR VIDEO FILE (base layer): {_AVATAR_FILENAME}\n\n"
+            f"AVATAR VIDEO FILE (base layer): {_AVATAR_FILENAME}\n"
+            f"{products_line}\n\n"
             "SCRIPT (JSON):\n"
             f"{script.model_dump_json(indent=2)}\n\n"
             "Write the index.html composition."
@@ -227,6 +239,7 @@ class HyperFramesComposer:
         avatar_video_path: str,
         out_path: str,
         duration_seconds: int = 45,
+        product_image_paths: list[str] | None = None,
         max_frame_revisions: int = 2,
         on_event=None,
     ) -> str:
@@ -240,12 +253,22 @@ class HyperFramesComposer:
         os.makedirs(comp_dir, exist_ok=True)
         shutil.copyfile(avatar_video_path, os.path.join(comp_dir, _AVATAR_FILENAME))
 
+        # Copy product images into the composition dir under stable names.
+        product_filenames: list[str] = []
+        for i, src in enumerate(product_image_paths or []):
+            ext = os.path.splitext(src)[1].lower() or ".png"
+            name = f"product_{i + 1}{ext}"
+            shutil.copyfile(src, os.path.join(comp_dir, name))
+            product_filenames.append(name)
+
         feedback: str | None = None
         rendered: str | None = None
 
         for attempt in range(max_frame_revisions + 1):
             emit("compose_author", {"attempt": attempt + 1})
-            html = self.author_html(script, duration_seconds, feedback=feedback)
+            html = self.author_html(
+                script, duration_seconds, product_filenames, feedback=feedback
+            )
             with open(os.path.join(comp_dir, "index.html"), "w") as f:
                 f.write(html)
 

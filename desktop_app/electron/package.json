@@ -1,0 +1,12 @@
+{
+  "name": "social-media-studio",
+  "version": "0.1.0",
+  "description": "Desktop app to generate talking-avatar videos from a script, your photo, and product images.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

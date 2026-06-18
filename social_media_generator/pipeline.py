@@ -56,6 +56,9 @@ class ContentPipeline:
         make_video: bool | None = None,
         compose: bool = True,
         max_frame_revisions: int = 2,
+        face_image_path: str | None = None,
+        product_image_paths: list[str] | None = None,
+        script: VideoScript | None = None,
         on_event=None,
         **script_kwargs,
     ) -> GenerationResult:
@@ -67,12 +70,15 @@ class ContentPipeline:
             output_dir = os.path.join("output", _slugify(goal))
         os.makedirs(output_dir, exist_ok=True)
 
-        # 1. Script (with self-review/revise loop) ---------------------------
+        # 1. Script — use the supplied one, or write+review a fresh one ------
         emit("stage", {"name": "script"})
-        writer = ScriptWriter(self.config)
-        script, review = writer.write_reviewed_script(
-            goal, on_event=on_event, **script_kwargs
-        )
+        if script is not None:
+            review = ScriptReview(approved=True, score=10, suggestions="(provided)")
+        else:
+            writer = ScriptWriter(self.config)
+            script, review = writer.write_reviewed_script(
+                goal, on_event=on_event, **script_kwargs
+            )
         script_path = os.path.join(output_dir, "script.json")
         self._write_script(script, review, goal, script_path)
         emit("script_done", {"title": script.title, "score": review.score})
@@ -95,8 +101,17 @@ class ContentPipeline:
             # 3. Avatar video -----------------------------------------------
             emit("stage", {"name": "video"})
             video_path = os.path.join(output_dir, "video.mp4")
-            AvatarVideoGenerator(self.config).render_from_audio(
-                audio_path, video_path, title=script.title, on_event=on_event
+            avatar_gen = AvatarVideoGenerator(self.config)
+            talking_photo_id = None
+            if face_image_path:
+                talking_photo_id = avatar_gen.upload_talking_photo(face_image_path)
+                emit("face_uploaded", {"talking_photo_id": talking_photo_id})
+            avatar_gen.render_from_audio(
+                audio_path,
+                video_path,
+                title=script.title,
+                talking_photo_id=talking_photo_id,
+                on_event=on_event,
             )
             emit("video_done", {"video_path": video_path})
 
@@ -110,6 +125,7 @@ class ContentPipeline:
                     avatar_video_path=video_path,
                     out_path=final_video_path,
                     duration_seconds=script_kwargs.get("target_seconds", 45),
+                    product_image_paths=product_image_paths,
                     max_frame_revisions=max_frame_revisions,
                     on_event=on_event,
                 )

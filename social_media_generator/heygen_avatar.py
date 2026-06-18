@@ -25,13 +25,14 @@ import requests
 from .config import Config
 
 _UPLOAD_URL = "https://upload.heygen.com/v1/asset"
+_TALKING_PHOTO_URL = "https://upload.heygen.com/v1/talking_photo"
 _GENERATE_URL = "https://api.heygen.com/v2/video/generate"
 _STATUS_URL = "https://api.heygen.com/v1/video_status.get"
 
 
 class AvatarVideoGenerator:
     def __init__(self, config: Config, timeout: int = 60):
-        config.require_avatar()
+        config.require_heygen()
         self._config = config
         self._timeout = timeout
 
@@ -40,6 +41,49 @@ class AvatarVideoGenerator:
         if content_type:
             headers["Content-Type"] = content_type
         return headers
+
+    def upload_talking_photo(self, image_path: str) -> str:
+        """Upload a face/body photo and return a HeyGen talking_photo_id.
+
+        This is how a user's own photo becomes a lip-synced presenter without
+        pre-creating an avatar in the HeyGen dashboard.
+        """
+        ext = os.path.splitext(image_path)[1].lower()
+        content_type = "image/png" if ext == ".png" else "image/jpeg"
+        with open(image_path, "rb") as f:
+            data = f.read()
+        resp = requests.post(
+            _TALKING_PHOTO_URL,
+            headers=self._headers(content_type=content_type),
+            data=data,
+            timeout=self._timeout,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"HeyGen talking-photo upload failed ({resp.status_code}): "
+                f"{resp.text[:500]}"
+            )
+        body = resp.json().get("data", {})
+        tp_id = body.get("talking_photo_id") or body.get("id")
+        if not tp_id:
+            raise RuntimeError(
+                f"HeyGen talking-photo upload returned no id: {resp.text[:500]}"
+            )
+        return tp_id
+
+    def _character(self, talking_photo_id: str | None) -> dict:
+        if talking_photo_id:
+            return {"type": "talking_photo", "talking_photo_id": talking_photo_id}
+        if not self._config.heygen_avatar_id:
+            raise RuntimeError(
+                "No avatar to render: set HEYGEN_AVATAR_ID or supply a face photo "
+                "(talking_photo_id)."
+            )
+        return {
+            "type": "avatar",
+            "avatar_id": self._config.heygen_avatar_id,
+            "avatar_style": self._config.heygen_avatar_style,
+        }
 
     def upload_audio(self, audio_path: str) -> str:
         """Upload an mp3 and return a HeyGen audio URL usable in a generate call."""
@@ -61,16 +105,18 @@ class AvatarVideoGenerator:
             raise RuntimeError(f"HeyGen upload returned no asset url: {resp.text[:500]}")
         return url
 
-    def start_render(self, audio_url: str, title: str = "") -> str:
-        """Start an avatar video render against an uploaded audio url. Returns video_id."""
+    def start_render(
+        self, audio_url: str, title: str = "", talking_photo_id: str | None = None
+    ) -> str:
+        """Start an avatar video render against an uploaded audio url. Returns video_id.
+
+        Pass `talking_photo_id` (from `upload_talking_photo`) to render the user's
+        own photo; otherwise the configured HEYGEN_AVATAR_ID is used.
+        """
         payload = {
             "video_inputs": [
                 {
-                    "character": {
-                        "type": "avatar",
-                        "avatar_id": self._config.heygen_avatar_id,
-                        "avatar_style": self._config.heygen_avatar_style,
-                    },
+                    "character": self._character(talking_photo_id),
                     "voice": {"type": "audio", "audio_url": audio_url},
                 }
             ],
@@ -147,13 +193,20 @@ class AvatarVideoGenerator:
         return out_path
 
     def render_from_audio(
-        self, audio_path: str, out_path: str, title: str = "", on_event=None
+        self,
+        audio_path: str,
+        out_path: str,
+        title: str = "",
+        talking_photo_id: str | None = None,
+        on_event=None,
     ) -> str:
         """Convenience: upload -> render -> wait -> download. Returns the mp4 path."""
         audio_url = self.upload_audio(audio_path)
         if on_event:
             on_event("audio_uploaded", {"audio_url": audio_url})
-        video_id = self.start_render(audio_url, title=title)
+        video_id = self.start_render(
+            audio_url, title=title, talking_photo_id=talking_photo_id
+        )
         if on_event:
             on_event("render_started", {"video_id": video_id})
         video_url = self.wait_for_video(video_id, on_event=on_event)

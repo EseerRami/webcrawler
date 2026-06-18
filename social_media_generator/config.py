@@ -91,6 +91,12 @@ class Config:
                 "HEYGEN_AVATAR_ID is not set. Pick an avatar in HeyGen and export its id."
             )
 
+    def require_heygen(self) -> None:
+        """Looser check: just the API key. Used when a talking-photo (uploaded
+        face image) supplies the character instead of a pre-made avatar id."""
+        if not self.heygen_api_key:
+            raise RuntimeError("HEYGEN_API_KEY is not set (needed for the avatar video).")
+
     @property
     def can_make_video(self) -> bool:
         return bool(
