@@ -41,3 +41,22 @@ class ScriptReview(BaseModel):
     suggestions: str = Field(
         default="", description="Actionable guidance for the next revision."
     )
+
+
+class FrameReview(BaseModel):
+    """A vision reviewer's verdict on sampled frames of the composited video."""
+
+    approved: bool = Field(
+        description="True if the rendered frames look correct and ready to ship."
+    )
+    issues: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Concrete visual problems: clipped/overlapping text, captions off-screen, "
+            "mistimed overlays, unreadable contrast, broken layout, missing avatar, etc."
+        ),
+    )
+    suggestions: str = Field(
+        default="",
+        description="Specific instructions for revising the HTML composition.",
+    )

@@ -40,6 +40,13 @@ class Config:
     video_width: int = 1280
     video_height: int = 720
 
+    # HyperFrames / motion-graphics compositing (open-source HTML->MP4 renderer).
+    # Installed as a Node CLI; see https://github.com/heygen-com/hyperframes
+    hyperframes_cmd: str = "npx hyperframes"
+    compose_fps: int = 30
+    compose_resolution: str = "1920x1080"
+    ffmpeg_cmd: str = "ffmpeg"
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
@@ -55,6 +62,10 @@ class Config:
             heygen_avatar_style=os.environ.get("HEYGEN_AVATAR_STYLE", "normal"),
             video_width=int(os.environ.get("SMG_VIDEO_WIDTH", "1280")),
             video_height=int(os.environ.get("SMG_VIDEO_HEIGHT", "720")),
+            hyperframes_cmd=os.environ.get("HYPERFRAMES_CMD", "npx hyperframes"),
+            compose_fps=int(os.environ.get("SMG_COMPOSE_FPS", "30")),
+            compose_resolution=os.environ.get("SMG_COMPOSE_RESOLUTION", "1920x1080"),
+            ffmpeg_cmd=os.environ.get("FFMPEG_CMD", "ffmpeg"),
         )
 
     def require_script(self) -> None:

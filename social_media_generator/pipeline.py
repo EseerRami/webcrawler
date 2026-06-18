@@ -21,6 +21,7 @@ from .claude_writer import ScriptWriter
 from .config import Config
 from .elevenlabs_voice import VoiceSynthesizer
 from .heygen_avatar import AvatarVideoGenerator
+from .hyperframes_compose import HyperFramesComposer
 from .schemas import ScriptReview, VideoScript
 
 
@@ -31,6 +32,7 @@ class GenerationResult:
     script_path: str
     audio_path: str | None
     video_path: str | None
+    final_video_path: str | None
     review_score: int
     review_approved: bool
 
@@ -52,6 +54,8 @@ class ContentPipeline:
         goal: str,
         output_dir: str | None = None,
         make_video: bool | None = None,
+        compose: bool = True,
+        max_frame_revisions: int = 2,
         on_event=None,
         **script_kwargs,
     ) -> GenerationResult:
@@ -75,6 +79,7 @@ class ContentPipeline:
 
         audio_path: str | None = None
         video_path: str | None = None
+        final_video_path: str | None = None
 
         # Decide whether to attempt the video legs.
         if make_video is None:
@@ -94,6 +99,21 @@ class ContentPipeline:
                 audio_path, video_path, title=script.title, on_event=on_event
             )
             emit("video_done", {"video_path": video_path})
+
+            # 4. HyperFrames polish layer (captions/intro/outro) + frame verify
+            if compose:
+                emit("stage", {"name": "compose"})
+                final_video_path = os.path.join(output_dir, "final.mp4")
+                HyperFramesComposer(self.config).compose(
+                    goal=goal,
+                    script=script,
+                    avatar_video_path=video_path,
+                    out_path=final_video_path,
+                    duration_seconds=script_kwargs.get("target_seconds", 45),
+                    max_frame_revisions=max_frame_revisions,
+                    on_event=on_event,
+                )
+                emit("compose_done", {"final_video_path": final_video_path})
         else:
             emit(
                 "video_skipped",
@@ -106,6 +126,7 @@ class ContentPipeline:
             script_path=script_path,
             audio_path=audio_path,
             video_path=video_path,
+            final_video_path=final_video_path,
             review_score=review.score,
             review_approved=review.approved,
         )

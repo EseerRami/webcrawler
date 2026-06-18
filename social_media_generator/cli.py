@@ -36,6 +36,15 @@ def _log(stage: str, payload) -> None:
         "render_status": lambda p: f"  ...render status: {p['status']}",
         "video_done": lambda p: f"  Video rendered -> {p['video_path']}",
         "video_skipped": lambda p: f"  Video skipped: {p['reason']}",
+        "compose_author": lambda p: f"  Authoring composition (round {p['attempt']})...",
+        "compose_render": lambda p: f"  Rendering with HyperFrames (round {p['attempt']})...",
+        "compose_verify_skipped": lambda p: f"  Frame verify skipped: {p['reason']}",
+        "compose_verified": lambda p: (
+            f"  Frames reviewed (round {p['attempt']}): "
+            f"{'approved' if p['approved'] else 'revising'}"
+            + (f" — {len(p['issues'])} issue(s)" if p["issues"] else "")
+        ),
+        "compose_done": lambda p: f"  Final cut -> {p['final_video_path']}",
     }
     fn = pretty.get(stage)
     if fn:
@@ -61,6 +70,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Only write the script + caption; skip voice and video.",
     )
+    parser.add_argument(
+        "--no-compose",
+        action="store_true",
+        help="Skip the HyperFrames polish layer (avatar clip is the final video).",
+    )
+    parser.add_argument(
+        "--max-frame-revisions",
+        type=int,
+        default=2,
+        help="Max frame-verify/revise rounds for the HyperFrames composition.",
+    )
     args = parser.parse_args(argv)
 
     config = Config.from_env()
@@ -76,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
             goal=args.goal,
             output_dir=args.output,
             make_video=False if args.script_only else None,
+            compose=not args.no_compose,
+            max_frame_revisions=args.max_frame_revisions,
             on_event=_log,
             platform=args.platform,
             tone=args.tone,
@@ -92,7 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     if result.audio_path:
         print(f"Narration:   {result.audio_path}")
     if result.video_path:
-        print(f"Video:       {result.video_path}")
+        print(f"Avatar clip: {result.video_path}")
+    if result.final_video_path:
+        print(f"Final cut:   {result.final_video_path}")
     print(f"Review:      {result.review_score}/10")
     return 0
 
