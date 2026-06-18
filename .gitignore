@@ -5,3 +5,6 @@ output/
 
 node_modules/
 dist/
+backend-bin/
+build/
+*.spec.bak

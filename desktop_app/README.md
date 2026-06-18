@@ -70,6 +70,37 @@ Env knobs: `SMG_BACKEND_PORT` (default 8765), `SMG_PYTHON` (python executable),
 Generated files live under a per-job temp dir; the backend serves the playable
 file at `/api/files/{job}/...`.
 
+## Packaging into a distributable app
+
+To ship a double-click `.app` / `.exe` / `AppImage` with no Python required on
+the user's machine, the backend is frozen with **PyInstaller** and bundled by
+**electron-builder**.
+
+```bash
+cd desktop_app/electron
+npm install                 # electron + electron-builder
+pip install -r ../requirements.txt   # includes pyinstaller
+
+npm run dist                # freezes backend -> installer for your OS
+# or: npm run pack          # unpacked app dir (faster, for testing)
+```
+
+What happens:
+
+1. `build:backend` runs PyInstaller (`../backend.spec`) → `backend-bin/smg-backend[.exe]`.
+2. `electron-builder` copies that into the app's `resources/backend/` and builds the installer.
+3. At runtime `main.js` detects `app.isPackaged` and launches the bundled binary
+   instead of `python -m uvicorn`.
+
+Build per-OS on that OS (PyInstaller binaries aren't cross-platform). Runtime
+**API keys still come from the environment** — for an installed app, add a
+settings screen or an `.env` loader so users can enter their keys in-app
+(follow-up, not yet built).
+
+> The compose stage still shells out to **Node/`npx hyperframes`** and **ffmpeg**
+> at runtime, so those remain external dependencies even in the packaged app. If
+> they're absent the app still works with HyperFrames disabled (avatar-only).
+
 ## Honest status
 
 - The Python pipeline + backend are wired and import-clean; the Electron files

@@ -15,17 +15,36 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 let backendProc = null;
 
+// In a packaged app there's no Python — launch the PyInstaller binary that
+// electron-builder copied into resources/backend/. In dev, run uvicorn.
+function backendCommand() {
+  if (app.isPackaged) {
+    const bin = process.platform === "win32" ? "smg-backend.exe" : "smg-backend";
+    return {
+      cmd: path.join(process.resourcesPath, "backend", bin),
+      args: [],
+      cwd: path.join(process.resourcesPath, "backend"),
+    };
+  }
+  return {
+    cmd: process.env.SMG_PYTHON || "python",
+    args: ["-m", "uvicorn", "desktop_app.backend.server:app", "--port", BACKEND_PORT],
+    cwd: REPO_ROOT,
+  };
+}
+
 function spawnBackend() {
   if (process.env.SMG_SPAWN_BACKEND === "0") return;
-  const py = process.env.SMG_PYTHON || "python";
-  backendProc = spawn(
-    py,
-    ["-m", "uvicorn", "desktop_app.backend.server:app", "--port", BACKEND_PORT],
-    { cwd: REPO_ROOT, env: process.env, stdio: "inherit" }
-  );
+  const { cmd, args, cwd } = backendCommand();
+  const env = { ...process.env, SMG_BACKEND_PORT: BACKEND_PORT };
+  backendProc = spawn(cmd, args, { cwd, env, stdio: "inherit" });
   backendProc.on("error", (err) => {
     console.error("Failed to spawn backend:", err.message);
-    console.error("Start it manually: uvicorn desktop_app.backend.server:app --port " + BACKEND_PORT);
+    console.error(
+      "Dev: start it manually with `uvicorn desktop_app.backend.server:app --port " +
+        BACKEND_PORT +
+        "` and relaunch with SMG_SPAWN_BACKEND=0."
+    );
   });
 }
 
