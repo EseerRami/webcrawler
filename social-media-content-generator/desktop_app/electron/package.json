@@ -1,0 +1,35 @@
+{
+  "name": "social-media-studio",
+  "version": "0.1.0",
+  "description": "Desktop app to generate talking-avatar videos from a script, your photo, and product images.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:backend": "pyinstaller --clean --noconfirm --distpath backend-bin --workpath build/pyi ../backend.spec",
+    "pack": "npm run build:backend && electron-builder --dir",
+    "dist": "npm run build:backend && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.socialmediastudio.app",
+    "productName": "Social Media Studio",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend-bin",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": { "target": "dmg", "category": "public.app-category.video" },
+    "win": { "target": "nsis" },
+    "linux": { "target": "AppImage", "category": "AudioVideo" }
+  }
+}

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+output/
+.env
+
+node_modules/
+dist/
+backend-bin/
+build/
+*.spec.bak

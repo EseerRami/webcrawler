@@ -1,0 +1,5 @@
+# Backend extras (in addition to social_media_generator/requirements.txt)
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+pyinstaller>=6.0   # only needed to package the backend into a standalone binary

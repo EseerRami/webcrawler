@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; img-src 'self' data:; media-src http://127.0.0.1:*; connect-src http://127.0.0.1:*; style-src 'self' 'unsafe-inline';" />
+    <title>Social Media Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Social Media Studio</h1>
+      <div id="health" class="badges"></div>
+    </header>
+
+    <main>
+      <!-- Step 1: script -->
+      <section class="card">
+        <h2>1 · Script</h2>
+        <label>Goal / topic
+          <textarea id="goal" rows="2" placeholder="e.g. Sell my new ceramic coffee mug to remote workers"></textarea>
+        </label>
+        <div class="row">
+          <label>Platform
+            <input id="platform" value="YouTube Shorts" />
+          </label>
+          <label>Tone
+            <input id="tone" value="energetic and direct" />
+          </label>
+          <label>Seconds
+            <input id="seconds" type="number" value="45" min="10" max="180" />
+          </label>
+        </div>
+        <button id="genScript">Generate script</button>
+
+        <div id="scriptFields" class="hidden">
+          <label>Title <input id="f_title" /></label>
+          <label>Hook <input id="f_hook" /></label>
+          <label>Body <textarea id="f_body" rows="3"></textarea></label>
+          <label>Call to action <input id="f_cta" /></label>
+          <label>Narration (this is what your voice will say)
+            <textarea id="f_narration" rows="5"></textarea>
+          </label>
+          <label>Caption <textarea id="f_caption" rows="2"></textarea></label>
+          <label>Hashtags (comma-separated) <input id="f_hashtags" /></label>
+        </div>
+      </section>
+
+      <!-- Step 2: assets + generate -->
+      <section class="card">
+        <h2>2 · Your face &amp; products</h2>
+        <label>Your photo (becomes the talking avatar)
+          <input id="face" type="file" accept="image/*" />
+        </label>
+        <label>Product images (optional, multiple)
+          <input id="products" type="file" accept="image/*" multiple />
+        </label>
+        <div class="row">
+          <label class="check"><input id="compose" type="checkbox" checked /> Polish with HyperFrames (captions, product scenes, intro/outro)</label>
+          <label>Frame revisions <input id="frameRev" type="number" value="2" min="0" max="4" /></label>
+        </div>
+        <button id="genVideo" disabled>Generate video</button>
+      </section>
+
+      <!-- Output -->
+      <section class="card">
+        <h2>3 · Result</h2>
+        <pre id="log" class="log"></pre>
+        <video id="preview" class="hidden" controls></video>
+      </section>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
