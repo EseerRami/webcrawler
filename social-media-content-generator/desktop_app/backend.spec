@@ -9,7 +9,8 @@
 import os
 
 # SPECPATH is provided by PyInstaller; it's the dir containing this spec (desktop_app).
-ROOT = os.path.abspath(os.path.join(os.path.dirname(SPECPATH), ".."))
+# The project root (holding both desktop_app/ and social_media_generator/) is its parent.
+ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 
 from PyInstaller.utils.hooks import collect_all
 
